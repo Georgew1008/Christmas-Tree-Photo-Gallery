@@ -1,0 +1,7 @@
+{
+  "name": "Holographic Christmas Tree",
+  "description": "A magical interactive 3D photo tree controlled by hand gestures. Open your hand to scatter the memories into a galaxy, close your fist to gather them into a festive tree.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
