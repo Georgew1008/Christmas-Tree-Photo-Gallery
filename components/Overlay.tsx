@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { GestureMode } from '../types';
 
 interface OverlayProps {
   onUpload: (files: FileList | null) => void;
+  onClear: () => void;
   gestureMode: GestureMode;
   rotationSpeed: number;
   isTracking: boolean;
@@ -11,14 +12,26 @@ interface OverlayProps {
   isLoading: boolean;
 }
 
+// Augment input props to allow webkitdirectory
+declare module 'react' {
+  interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
+    webkitdirectory?: string;
+    directory?: string;
+  }
+}
+
 const Overlay: React.FC<OverlayProps> = ({ 
   onUpload, 
+  onClear,
   gestureMode, 
   rotationSpeed, 
   isTracking, 
   videoRef,
   isLoading
 }) => {
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 md:p-10 z-10 font-serif select-none">
       
@@ -91,22 +104,36 @@ const Overlay: React.FC<OverlayProps> = ({
            </div>
         </div>
 
-        {/* Upload Button */}
-        <label className="cursor-pointer group relative">
-          <input 
-            type="file" 
-            multiple 
-            accept="image/*" 
-            className="hidden" 
-            onChange={(e) => onUpload(e.target.files)}
-          />
-          <div className="absolute inset-0 bg-[#F2D06B] transform translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2 opacity-40"></div>
-          
-          <div className="relative bg-[#002A1C] border border-[#F2D06B] px-10 py-4 hover:bg-[#003825] transition-colors flex items-center gap-4 shadow-lg">
-            <i className="fas fa-film text-[#F2D06B] text-lg"></i>
-            <span className="text-[#F2D06B] font-bold tracking-[0.2em] text-sm uppercase">Upload Photos</span>
-          </div>
-        </label>
+        {/* Action Buttons */}
+        <div className="flex gap-4">
+            {/* Clear Button */}
+            <button 
+                onClick={onClear}
+                className="group relative bg-[#1A0000] border border-[#C72C35] px-6 py-4 hover:bg-[#2A0000] transition-colors flex items-center gap-3 shadow-lg"
+            >
+                <div className="absolute inset-0 bg-[#C72C35] opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                <i className="fas fa-trash text-[#C72C35] text-lg"></i>
+                <span className="text-[#C72C35] font-bold tracking-[0.2em] text-xs uppercase">Clear Gallery</span>
+            </button>
+
+            {/* Upload Button */}
+            <label className="cursor-pointer group relative">
+            <input 
+                ref={fileInputRef}
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                onChange={(e) => onUpload(e.target.files)}
+            />
+            <div className="absolute inset-0 bg-[#F2D06B] transform translate-x-1 translate-y-1 transition-transform group-hover:translate-x-2 group-hover:translate-y-2 opacity-40"></div>
+            
+            <div className="relative bg-[#002A1C] border border-[#F2D06B] px-10 py-4 hover:bg-[#003825] transition-colors flex items-center gap-4 shadow-lg">
+                <i className="fas fa-images text-[#F2D06B] text-lg"></i>
+                <span className="text-[#F2D06B] font-bold tracking-[0.2em] text-sm uppercase">Upload Photos</span>
+            </div>
+            </label>
+        </div>
       </div>
     </div>
   );

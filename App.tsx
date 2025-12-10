@@ -6,6 +6,7 @@ import { initHandTracking, detectGesture } from './services/handTracking';
 import { DEFAULT_PHOTOS } from './constants';
 import { GestureMode, AppState } from './types';
 import { HandLandmarker } from '@mediapipe/tasks-vision';
+import { saveImagesToDB, loadImagesFromDB, clearImagesFromDB } from './services/persistence';
 
 const App: React.FC = () => {
   // App State
@@ -28,15 +29,29 @@ const App: React.FC = () => {
   const targetScatterFactor = useRef<number>(0);
   const currentScatterFactor = useRef<number>(0);
 
-  // Initialize Hand Tracking
+  // Initialize Hand Tracking & Load Persisted Photos
   useEffect(() => {
-    const setupCamera = async () => {
+    const setupApp = async () => {
       try {
+        setAppState(AppState.LOADING_ASSETS);
+        
+        // 1. Load persisted photos
+        try {
+          const savedUrls = await loadImagesFromDB();
+          if (savedUrls.length > 0) {
+            setImageUrls(savedUrls);
+          }
+        } catch (e) {
+          console.warn("Could not load saved photos", e);
+        }
+
         setAppState(AppState.LOADING_MODEL);
+        
+        // 2. Init Hand Tracking
         const landmarker = await initHandTracking();
         handLandmarkerRef.current = landmarker;
 
-        // Get webcam stream
+        // 3. Get webcam stream
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
            const stream = await navigator.mediaDevices.getUserMedia({ 
              video: { 
@@ -60,7 +75,7 @@ const App: React.FC = () => {
       }
     };
 
-    setupCamera();
+    setupApp();
 
     return () => {
       cancelAnimationFrame(requestRef.current);
@@ -112,7 +127,6 @@ const App: React.FC = () => {
     }
     
     // Smooth the scatter factor (Linear Interpolation)
-    // Adjust 0.1 for faster/slower smoothing
     currentScatterFactor.current += (targetScatterFactor.current - currentScatterFactor.current) * 0.1;
     
     // Update React State for the scene
@@ -121,21 +135,35 @@ const App: React.FC = () => {
     requestRef.current = requestAnimationFrame(predictWebcam);
   };
 
-  const handlePhotoUpload = (files: FileList | null) => {
+  const handlePhotoUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
+    const fileArray = Array.from(files);
+    
+    // 1. Save to DB
+    await saveImagesToDB(fileArray);
+
+    // 2. Generate URLs for current session immediately
     const newUrls: string[] = [];
-    Array.from(files).forEach(file => {
+    fileArray.forEach(file => {
       const url = URL.createObjectURL(file);
       newUrls.push(url);
     });
-    setImageUrls(newUrls);
+    
+    // Append to existing
+    setImageUrls(prev => [...prev, ...newUrls]);
+  };
+
+  const handleClearPhotos = async () => {
+     await clearImagesFromDB();
+     setImageUrls([]);
   };
 
   return (
     <div className="relative w-full h-full bg-black">
       <Overlay 
         onUpload={handlePhotoUpload}
+        onClear={handleClearPhotos}
         gestureMode={gestureMode}
         rotationSpeed={rotationSpeed}
         isTracking={isTracking}
